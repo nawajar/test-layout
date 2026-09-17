@@ -17,10 +17,10 @@ const { panelWidth, startDrag } = useResizablePanel(container, { initialWidth: 6
     <!-- LEFT ZONE -->
     <div id="leftZone" class="h-full bg-white" :style="{ width: panelWidth + 'px' }">
       <Zone>
-        <WindowPanel title="Section 1" :x="16" :y="16" :width="360" :height="420">
+        <WindowPanel id="section-1" title="Section 1" :x="16" :y="16" :width="360" :height="420">
           <DietaryProfileEditable />
         </WindowPanel>
-        <WindowPanel title="Section 2" :x="392" :y="16" :width="360" :height="420">
+        <WindowPanel id="section-2" title="Section 2" :x="392" :y="16" :width="360" :height="420">
           <DietaryProfileSystem />
         </WindowPanel>
       </Zone>
@@ -36,7 +36,7 @@ const { panelWidth, startDrag } = useResizablePanel(container, { initialWidth: 6
     <!-- RIGHT ZONE -->
     <div id="rightZone" class="flex-1 h-full bg-white">
       <Zone>
-        <WindowPanel title="Table" :x="16" :y="16" :width="640" :height="360">
+        <WindowPanel id="table" title="Table" :x="16" :y="16" :width="640" :height="360">
           <DataTable />
         </WindowPanel>
       </Zone>

@@ -2,6 +2,7 @@
 import { useWindowPanel } from '../composables/useWindowPanel'
 
 const props = defineProps({
+  id: { type: String, required: true },
   title: { type: String, required: true },
   x: { type: Number, default: 20 },
   y: { type: Number, default: 20 },
@@ -12,6 +13,7 @@ const props = defineProps({
 })
 
 const { pos, size, zIndex, startDrag, startResize, bringToFront } = useWindowPanel({
+  id: props.id,
   x: props.x,
   y: props.y,
   width: props.width,
