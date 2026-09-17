@@ -4,32 +4,22 @@ let zCounter = 10
 
 export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHeight = 140 }) {
   const zoneRef = inject('zoneRef', null)
-  const tileApi = inject('tileApi', null)
+  const poolApi = inject('poolApi', null)
 
   const freePos = ref({ x, y })
   const freeSize = ref({ width, height })
   const zIndex = ref(++zCounter)
-
-  const isTiled = computed(() => !!(tileApi && tileApi.rects.value[id]))
   const isMaximized = ref(false)
 
-  const pos = computed(() => {
-    if (isMaximized.value) return { x: 0, y: 0 }
-    if (!isTiled.value) return freePos.value
-    const r = tileApi.rects.value[id]
-    return { x: r.left, y: r.top }
-  })
+  const pos = computed(() => (isMaximized.value ? { x: 0, y: 0 } : freePos.value))
   const size = computed(() => {
-    if (isMaximized.value) {
-      const rect = zoneRect()
-      return rect ? { width: rect.width, height: rect.height } : freeSize.value
-    }
-    return isTiled.value ? tileApi.rects.value[id] : freeSize.value
+    if (!isMaximized.value) return freeSize.value
+    const rect = zoneRect()
+    return rect ? { width: rect.width, height: rect.height } : freeSize.value
   })
 
   let dragState = null
   let resizeState = null
-  let borderResizeAxis = null
 
   function bringToFront() {
     zIndex.value = ++zCounter
@@ -44,9 +34,15 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
     return zoneRef?.value ? zoneRef.value.getBoundingClientRect() : null
   }
 
+  function setRect({ x, y, width, height }) {
+    isMaximized.value = false
+    freePos.value = { x, y }
+    freeSize.value = { width, height }
+  }
+
   function clampToZone() {
     const rect = zoneRect()
-    if (!rect || isTiled.value) return
+    if (!rect) return
     const maxX = Math.max(0, rect.width - freeSize.value.width)
     const maxY = Math.max(0, rect.height - freeSize.value.height)
     freePos.value.x = Math.min(Math.max(0, freePos.value.x), maxX)
@@ -58,15 +54,6 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
     document.body.style.userSelect = 'none'
     isMaximized.value = false
 
-    // Undock immediately, like OS window snapping: the moment you grab a tiled
-    // window it detaches and siblings reflow into the freed space right away.
-    if (isTiled.value) {
-      const r = tileApi.rects.value[id]
-      freePos.value = { x: r.left, y: r.top }
-      freeSize.value = { width: r.width, height: r.height }
-      tileApi.remove(id)
-    }
-
     dragState = { startX: e.clientX, startY: e.clientY, origX: freePos.value.x, origY: freePos.value.y }
     e.preventDefault()
   }
@@ -75,22 +62,6 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
     bringToFront()
     document.body.style.userSelect = 'none'
     isMaximized.value = false
-
-    if (isTiled.value && tileApi) {
-      const edge = tileApi.getResizableEdge(id)
-      if (edge === dir) {
-        borderResizeAxis = dir === 'e' || dir === 'w' ? 'x' : 'y'
-        e.preventDefault()
-        e.stopPropagation()
-        return
-      }
-      // No shared border on this handle (outer edge or a corner) — detach and
-      // resize freely, same as a free-floating panel.
-      const r = tileApi.rects.value[id]
-      freePos.value = { x: r.left, y: r.top }
-      freeSize.value = { width: r.width, height: r.height }
-      tileApi.remove(id)
-    }
 
     resizeState = {
       dir,
@@ -108,11 +79,6 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
   function onMouseMove(e) {
     const rect = zoneRect()
 
-    if (borderResizeAxis) {
-      tileApi.resizeSplit(id, e.clientX, e.clientY)
-      return
-    }
-
     if (dragState) {
       const dx = e.clientX - dragState.startX
       const dy = e.clientY - dragState.startY
@@ -127,12 +93,6 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
       }
       freePos.value.x = newX
       freePos.value.y = newY
-
-      if (tileApi) {
-        const target = tileApi.findTarget(id, e.clientX, e.clientY)
-        tileApi.setPreview(target)
-        dragState.target = target
-      }
       return
     }
 
@@ -183,15 +143,8 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
   }
 
   function onMouseUp() {
-    if (dragState) {
-      if (dragState.target && tileApi) {
-        tileApi.insert(id, dragState.target)
-      }
-      if (tileApi) tileApi.setPreview(null)
-    }
     dragState = null
     resizeState = null
-    borderResizeAxis = null
     document.body.style.userSelect = ''
   }
 
@@ -200,14 +153,14 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
 
   onMounted(() => {
     nextTick(clampToZone)
-    if (tileApi) tileApi.registerPanel(id)
+    if (poolApi) poolApi.registerPanel(id, setRect)
   })
 
   onUnmounted(() => {
     window.removeEventListener('mousemove', onMouseMove)
     window.removeEventListener('mouseup', onMouseUp)
-    if (tileApi) tileApi.unregisterPanel(id)
+    if (poolApi) poolApi.unregisterPanel(id)
   })
 
-  return { pos, size, zIndex, isTiled, isMaximized, startDrag, startResize, bringToFront, toggleMaximize }
+  return { pos, size, zIndex, isMaximized, startDrag, startResize, bringToFront, toggleMaximize }
 }
