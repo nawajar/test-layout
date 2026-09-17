@@ -12,7 +12,7 @@ const props = defineProps({
   minHeight: { type: Number, default: 140 },
 })
 
-const { pos, size, zIndex, startDrag, startResize, bringToFront } = useWindowPanel({
+const { pos, size, zIndex, isMaximized, startDrag, startResize, bringToFront, toggleMaximize } = useWindowPanel({
   id: props.id,
   x: props.x,
   y: props.y,
@@ -40,9 +40,27 @@ const handles = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
     <div
       class="flex items-center justify-between px-3 py-2 bg-gray-50 border-b border-gray-200 rounded-t cursor-move select-none flex-shrink-0"
       @mousedown="startDrag"
+      @dblclick="toggleMaximize"
     >
       <span class="text-sm font-semibold text-gray-700">{{ title }}</span>
-      <slot name="header-extra" />
+      <div class="flex items-center gap-1">
+        <slot name="header-extra" />
+        <button
+          type="button"
+          :title="isMaximized ? 'Restore' : 'Maximize'"
+          class="flex items-center justify-center w-6 h-6 rounded text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+          @mousedown.stop
+          @click.stop="toggleMaximize"
+        >
+          <svg v-if="!isMaximized" width="11" height="11" viewBox="0 0 11 11" fill="none">
+            <rect x="0.75" y="0.75" width="9.5" height="9.5" rx="1" stroke="currentColor" stroke-width="1.3" />
+          </svg>
+          <svg v-else width="11" height="11" viewBox="0 0 11 11" fill="none">
+            <rect x="3" y="0.75" width="7.25" height="7.25" rx="1" stroke="currentColor" stroke-width="1.3" />
+            <path d="M0.75 3.25V9.5a0.75 0.75 0 0 0 0.75 0.75H7.5" stroke="currentColor" stroke-width="1.3" fill="none" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div class="flex-1 overflow-auto p-4">

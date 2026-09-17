@@ -11,12 +11,21 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
   const zIndex = ref(++zCounter)
 
   const isTiled = computed(() => !!(tileApi && tileApi.rects.value[id]))
+  const isMaximized = ref(false)
+
   const pos = computed(() => {
+    if (isMaximized.value) return { x: 0, y: 0 }
     if (!isTiled.value) return freePos.value
     const r = tileApi.rects.value[id]
     return { x: r.left, y: r.top }
   })
-  const size = computed(() => (isTiled.value ? tileApi.rects.value[id] : freeSize.value))
+  const size = computed(() => {
+    if (isMaximized.value) {
+      const rect = zoneRect()
+      return rect ? { width: rect.width, height: rect.height } : freeSize.value
+    }
+    return isTiled.value ? tileApi.rects.value[id] : freeSize.value
+  })
 
   let dragState = null
   let resizeState = null
@@ -24,6 +33,11 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
 
   function bringToFront() {
     zIndex.value = ++zCounter
+  }
+
+  function toggleMaximize() {
+    isMaximized.value = !isMaximized.value
+    bringToFront()
   }
 
   function zoneRect() {
@@ -42,6 +56,7 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
   function startDrag(e) {
     bringToFront()
     document.body.style.userSelect = 'none'
+    isMaximized.value = false
 
     // Undock immediately, like OS window snapping: the moment you grab a tiled
     // window it detaches and siblings reflow into the freed space right away.
@@ -59,6 +74,7 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
   function startResize(dir, e) {
     bringToFront()
     document.body.style.userSelect = 'none'
+    isMaximized.value = false
 
     if (isTiled.value && tileApi) {
       const edge = tileApi.getResizableEdge(id)
@@ -193,5 +209,5 @@ export function useWindowPanel({ id, x, y, width, height, minWidth = 220, minHei
     if (tileApi) tileApi.unregisterPanel(id)
   })
 
-  return { pos, size, zIndex, isTiled, startDrag, startResize, bringToFront }
+  return { pos, size, zIndex, isTiled, isMaximized, startDrag, startResize, bringToFront, toggleMaximize }
 }
